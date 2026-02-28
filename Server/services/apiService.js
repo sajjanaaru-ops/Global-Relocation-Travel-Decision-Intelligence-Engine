@@ -140,11 +140,14 @@ async function fetchAQI(capital, countryName) {
 async function fetchTravelAdvisory(iso2, countryName) {
   if (!iso2) return null;
   return timedCall("TRAVEL_ADVISORY", countryName, async () => {
-    const res = await http.get(`https://www.travel-advisory.info/api?countrycode=${iso2}`);
+    const https = require('https');
+    const res = await http.get(`https://www.travel-advisory.info/api?countrycode=${iso2}`, {
+      httpsAgent: new https.Agent({ rejectUnauthorized: false })
+    });
     const entry = res.data?.data?.[iso2];
     if (!entry) throw new Error("No advisory data");
     return {
-      score:          entry.advisory?.score ?? null,   // 1.0 (safe) – 5.0 (do not travel)
+      score:          entry.advisory?.score ?? null,
       message:        entry.advisory?.message || "No message available",
       sources_active: entry.advisory?.sources_active ?? 0,
     };
