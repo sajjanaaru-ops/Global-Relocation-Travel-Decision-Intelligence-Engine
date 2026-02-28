@@ -3,212 +3,294 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GeoIntel — Relocation Decision Engine</title>
+  <title>GeoIntel — Global Relocation Intelligence</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Rajdhani:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
 
   <style>
-    /* ── Variables ───────────────────────────────────────────────── */
     :root {
-      --bg:        #07080d;
-      --bg2:       #0d0f18;
-      --bg3:       #131623;
-      --border:    #1e2235;
-      --border2:   #2a2f4a;
-      --gold:      #c9a84c;
-      --gold2:     #e8c96a;
-      --gold-dim:  #c9a84c22;
-      --red:       #e05252;
-      --green:     #4caf7d;
-      --blue:      #4a7fc1;
-      --text:      #d4d8e8;
-      --text2:     #7880a0;
-      --text3:     #4a5070;
-      --mono:      'IBM Plex Mono', monospace;
-      --serif:     'Playfair Display', serif;
-      --sans:      'IBM Plex Sans', sans-serif;
+      --bg:        #020408;
+      --bg2:       #050b14;
+      --bg3:       #0a1628;
+      --cyan:      #00d4ff;
+      --cyan2:     #00ffcc;
+      --cyan-dim:  #00d4ff18;
+      --cyan-glow: #00d4ff40;
+      --gold:      #ffd700;
+      --gold-dim:  #ffd70020;
+      --red:       #ff4757;
+      --green:     #2ed573;
+      --border:    #0d2440;
+      --border2:   #1a3a5c;
+      --text:      #c8e6f5;
+      --text2:     #5a8aaa;
+      --text3:     #2a4a6a;
+      --mono:      'Share Tech Mono', monospace;
+      --serif:     'Cinzel', serif;
+      --sans:      'Rajdhani', sans-serif;
     }
 
-    /* ── Reset ───────────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     html { scroll-behavior: smooth; }
 
     body {
       background: var(--bg);
       color: var(--text);
       font-family: var(--sans);
-      font-size: 14px;
+      font-size: 15px;
       line-height: 1.6;
       min-height: 100vh;
       overflow-x: hidden;
+      cursor: none;
     }
 
-    /* ── Grid texture overlay ─────────────────────────────────────── */
+    /* ── Custom cursor ── */
+    .cursor {
+      position: fixed;
+      width: 8px; height: 8px;
+      background: var(--cyan);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transition: transform 0.1s ease;
+      box-shadow: 0 0 10px var(--cyan), 0 0 20px var(--cyan);
+    }
+    .cursor-ring {
+      position: fixed;
+      width: 32px; height: 32px;
+      border: 1px solid var(--cyan);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9998;
+      transition: all 0.15s ease;
+      opacity: 0.5;
+    }
+
+    /* ── Canvas particle background ── */
+    #particle-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ── Scan line effect ── */
+    .scanline {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      opacity: 0.15;
+      z-index: 1;
+      animation: scanDown 8s linear infinite;
+    }
+    @keyframes scanDown {
+      from { top: -2px; }
+      to   { top: 100vh; }
+    }
+
+    /* ── Vignette ── */
     body::before {
       content: '';
       position: fixed;
       inset: 0;
-      background-image:
-        linear-gradient(var(--border) 1px, transparent 1px),
-        linear-gradient(90deg, var(--border) 1px, transparent 1px);
-      background-size: 48px 48px;
-      opacity: 0.25;
+      background: radial-gradient(ellipse at center, transparent 40%, #000 100%);
       pointer-events: none;
-      z-index: 0;
+      z-index: 1;
     }
 
-    /* ── Noise overlay ────────────────────────────────────────────── */
-    body::after {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-      opacity: 0.6;
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    /* ── Layout ───────────────────────────────────────────────────── */
+    /* ── App wrapper ── */
     .app {
       position: relative;
-      z-index: 1;
-      max-width: 1200px;
+      z-index: 2;
+      max-width: 1100px;
       margin: 0 auto;
       padding: 0 24px 80px;
     }
 
-    /* ── Header ───────────────────────────────────────────────────── */
+    /* ── Header ── */
     header {
-      padding: 40px 0 32px;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 40px;
-      display: flex;
-      align-items: flex-end;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 16px;
+      padding: 48px 0 40px;
+      text-align: center;
+      position: relative;
+      margin-bottom: 48px;
     }
 
-    .logo-block { display: flex; flex-direction: column; gap: 4px; }
-
-    .logo-eyebrow {
+    .header-eyebrow {
       font-family: var(--mono);
       font-size: 10px;
-      letter-spacing: 0.2em;
-      color: var(--gold);
+      letter-spacing: 0.4em;
+      color: var(--cyan);
       text-transform: uppercase;
+      margin-bottom: 16px;
+      opacity: 0;
+      animation: fadeUp 0.8s ease 0.2s forwards;
     }
 
-    .logo-title {
+    .header-title {
       font-family: var(--serif);
-      font-size: clamp(28px, 5vw, 46px);
+      font-size: clamp(36px, 7vw, 72px);
       font-weight: 900;
       color: #fff;
-      letter-spacing: -0.01em;
+      letter-spacing: 0.05em;
       line-height: 1;
+      text-shadow: 0 0 40px var(--cyan-glow), 0 0 80px var(--cyan-dim);
+      opacity: 0;
+      animation: fadeUp 0.8s ease 0.4s forwards;
+    }
+    .header-title .accent { color: var(--cyan); }
+
+    .header-subtitle {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text2);
+      letter-spacing: 0.2em;
+      margin-top: 12px;
+      opacity: 0;
+      animation: fadeUp 0.8s ease 0.6s forwards;
     }
 
-    .logo-title span { color: var(--gold); }
+    /* Animated underline */
+    .header-line {
+      width: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      margin: 24px auto 0;
+      animation: expandLine 1s ease 0.8s forwards;
+    }
+    @keyframes expandLine { to { width: 300px; } }
 
-    .header-meta {
+    /* Live clock */
+    .live-clock {
+      position: absolute;
+      top: 48px; right: 0;
       font-family: var(--mono);
       font-size: 10px;
       color: var(--text3);
       text-align: right;
       line-height: 1.8;
+      opacity: 0;
+      animation: fadeUp 0.8s ease 1s forwards;
+    }
+    .live-clock .clock-val { color: var(--text2); }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
-    /* ── Section labels ───────────────────────────────────────────── */
+    /* ── Section label ── */
     .section-label {
       font-family: var(--mono);
       font-size: 9px;
-      letter-spacing: 0.25em;
+      letter-spacing: 0.3em;
       text-transform: uppercase;
-      color: var(--gold);
-      margin-bottom: 16px;
+      color: var(--cyan);
+      margin-bottom: 20px;
       display: flex;
       align-items: center;
       gap: 12px;
+    }
+    .section-label::before {
+      content: '▸';
+      animation: blink 1.5s step-end infinite;
     }
     .section-label::after {
       content: '';
       flex: 1;
       height: 1px;
-      background: var(--border);
+      background: linear-gradient(90deg, var(--border2), transparent);
     }
+    @keyframes blink { 50% { opacity: 0; } }
 
-    /* ── Form panel ───────────────────────────────────────────────── */
+    /* ── Form panel ── */
     .form-panel {
       background: var(--bg2);
-      border: 1px solid var(--border);
-      padding: 32px;
+      border: 1px solid var(--border2);
+      padding: 36px;
       margin-bottom: 40px;
       position: relative;
       overflow: hidden;
+      opacity: 0;
+      animation: fadeUp 0.8s ease 0.8s forwards;
     }
 
-    .form-panel::before {
+    /* Corner decorations */
+    .form-panel::before, .form-panel::after {
       content: '';
       position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, var(--gold), transparent);
+      width: 20px; height: 20px;
+    }
+    .form-panel::before {
+      top: -1px; left: -1px;
+      border-top: 2px solid var(--cyan);
+      border-left: 2px solid var(--cyan);
+    }
+    .form-panel::after {
+      bottom: -1px; right: -1px;
+      border-bottom: 2px solid var(--cyan);
+      border-right: 2px solid var(--cyan);
     }
 
-    /* ── Country tags ─────────────────────────────────────────────── */
-    .country-input-area {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin-bottom: 24px;
+    /* ── Country tag input ── */
+    .field-label {
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text2);
+      margin-bottom: 10px;
     }
 
     .tags-container {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      min-height: 42px;
-      padding: 8px;
+      min-height: 48px;
+      padding: 10px 12px;
       background: var(--bg3);
-      border: 1px solid var(--border);
+      border: 1px solid var(--border2);
       cursor: text;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      margin-bottom: 8px;
     }
-
-    .tags-container:focus-within { border-color: var(--gold); }
+    .tags-container:focus-within {
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 1px var(--cyan-dim), 0 0 20px var(--cyan-dim);
+    }
 
     .country-tag {
       display: flex;
       align-items: center;
-      gap: 6px;
-      background: var(--gold-dim);
-      border: 1px solid var(--gold);
-      color: var(--gold2);
+      gap: 8px;
+      background: var(--cyan-dim);
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
       font-family: var(--mono);
       font-size: 11px;
       padding: 4px 10px;
-      animation: tagIn 0.2s ease;
+      animation: tagPop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
-
-    @keyframes tagIn {
-      from { opacity: 0; transform: scale(0.9); }
+    @keyframes tagPop {
+      from { opacity: 0; transform: scale(0.7); }
       to   { opacity: 1; transform: scale(1); }
     }
 
     .tag-remove {
       cursor: pointer;
-      color: var(--text3);
-      font-size: 14px;
-      line-height: 1;
       background: none;
       border: none;
-      color: var(--gold);
+      color: var(--cyan);
       opacity: 0.5;
-      transition: opacity 0.15s;
+      font-size: 16px;
+      line-height: 1;
+      transition: opacity 0.15s, transform 0.15s;
+      padding: 0;
     }
-    .tag-remove:hover { opacity: 1; }
+    .tag-remove:hover { opacity: 1; transform: scale(1.2); }
 
     .tag-input {
       flex: 1;
@@ -219,143 +301,198 @@
       font-family: var(--mono);
       font-size: 12px;
       color: var(--text);
-      padding: 4px 4px;
+      padding: 4px;
     }
     .tag-input::placeholder { color: var(--text3); }
 
     .input-hint {
       font-family: var(--mono);
-      font-size: 10px;
+      font-size: 9px;
       color: var(--text3);
-    }
-
-    /* ── Form row ─────────────────────────────────────────────────── */
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
+      letter-spacing: 0.05em;
       margin-bottom: 24px;
     }
 
-    .field-group { display: flex; flex-direction: column; gap: 8px; }
-
-    .field-label {
-      font-family: var(--mono);
-      font-size: 10px;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: var(--text2);
+    /* ── Toggle buttons ── */
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 28px;
     }
 
-    .toggle-group {
-      display: flex;
-      gap: 0;
-    }
+    .field-group { display: flex; flex-direction: column; }
+
+    .toggle-group { display: flex; }
 
     .toggle-btn {
       flex: 1;
-      padding: 10px 16px;
+      padding: 11px 12px;
       background: var(--bg3);
-      border: 1px solid var(--border);
+      border: 1px solid var(--border2);
       color: var(--text2);
       font-family: var(--mono);
-      font-size: 11px;
-      cursor: pointer;
-      transition: all 0.15s;
-      letter-spacing: 0.05em;
-      margin-left: -1px;
-    }
-    .toggle-btn:first-child { margin-left: 0; }
-    .toggle-btn:hover { color: var(--text); border-color: var(--border2); z-index: 1; }
-    .toggle-btn.active {
-      background: var(--gold-dim);
-      border-color: var(--gold);
-      color: var(--gold2);
-      z-index: 2;
-    }
-
-    /* ── Analyze button ───────────────────────────────────────────── */
-    .analyze-btn {
-      width: 100%;
-      padding: 16px;
-      background: var(--gold);
-      border: none;
-      color: var(--bg);
-      font-family: var(--mono);
-      font-size: 12px;
-      font-weight: 500;
-      letter-spacing: 0.2em;
+      font-size: 10px;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
       cursor: pointer;
       transition: all 0.2s;
+      margin-left: -1px;
+      position: relative;
+      overflow: hidden;
+    }
+    .toggle-btn:first-child { margin-left: 0; }
+
+    .toggle-btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--cyan);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .toggle-btn:hover { color: var(--text); border-color: var(--border2); z-index: 1; }
+    .toggle-btn.active {
+      background: var(--cyan-dim);
+      border-color: var(--cyan);
+      color: var(--cyan);
+      z-index: 2;
+      box-shadow: 0 0 12px var(--cyan-dim);
+      text-shadow: 0 0 8px var(--cyan);
+    }
+
+    /* ── Analyze button ── */
+    .analyze-btn {
+      width: 100%;
+      padding: 18px;
+      background: transparent;
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      font-family: var(--serif);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.3s;
       position: relative;
       overflow: hidden;
     }
 
-    .analyze-btn::after {
+    .analyze-btn::before {
       content: '';
       position: absolute;
-      inset: 0;
-      background: #fff2;
-      transform: translateX(-100%);
-      transition: transform 0.3s ease;
+      top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, var(--cyan-dim), transparent);
+      transition: left 0.5s ease;
     }
-    .analyze-btn:hover::after { transform: translateX(0); }
-    .analyze-btn:hover { background: var(--gold2); }
+    .analyze-btn:hover::before { left: 100%; }
+    .analyze-btn:hover {
+      background: var(--cyan-dim);
+      box-shadow: 0 0 30px var(--cyan-glow), inset 0 0 30px var(--cyan-dim);
+      text-shadow: 0 0 10px var(--cyan);
+    }
     .analyze-btn:disabled {
-      background: var(--border2);
+      border-color: var(--border2);
       color: var(--text3);
       cursor: not-allowed;
+      box-shadow: none;
     }
-    .analyze-btn:disabled::after { display: none; }
+    .analyze-btn:disabled::before { display: none; }
 
-    /* ── Error message ────────────────────────────────────────────── */
+    /* ── Error message ── */
     .error-msg {
-      background: #e0525215;
-      border: 1px solid #e05252;
-      color: #e05252;
+      background: #ff475710;
+      border: 1px solid var(--red);
+      color: var(--red);
       font-family: var(--mono);
       font-size: 11px;
       padding: 12px 16px;
       margin-top: 16px;
       display: none;
+      animation: fadeUp 0.3s ease;
     }
-    .error-msg.visible { display: block; animation: fadeIn 0.3s ease; }
+    .error-msg.visible { display: block; }
 
-    /* ── Loading ─────────────────────────────────────────────────── */
+    /* ── Loading ── */
     .loading-panel {
       display: none;
       text-align: center;
-      padding: 60px 0;
-      animation: fadeIn 0.3s ease;
+      padding: 80px 0;
     }
-    .loading-panel.visible { display: block; }
+    .loading-panel.visible { display: block; animation: fadeUp 0.3s ease; }
 
-    .loading-spinner {
-      width: 48px;
-      height: 48px;
-      border: 2px solid var(--border2);
-      border-top-color: var(--gold);
+    /* Radar animation */
+    .radar-wrapper {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 32px;
+      position: relative;
+    }
+
+    .radar-circle {
+      position: absolute;
       border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin: 0 auto 24px;
+      border: 1px solid var(--cyan);
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 0.3;
+    }
+    .radar-circle:nth-child(1) { width: 40px; height: 40px; }
+    .radar-circle:nth-child(2) { width: 70px; height: 70px; }
+    .radar-circle:nth-child(3) { width: 100px; height: 100px; }
+    .radar-circle:nth-child(4) { width: 120px; height: 120px; }
+
+    .radar-sweep {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 50%;
+      height: 1px;
+      transform-origin: left center;
+      animation: radarSpin 2s linear infinite;
+      background: linear-gradient(90deg, var(--cyan), transparent);
+    }
+    .radar-sweep::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 60px;
+      margin-top: -60px;
+      background: conic-gradient(from 0deg, transparent 330deg, var(--cyan-dim) 360deg);
+      transform-origin: bottom left;
+    }
+    @keyframes radarSpin { to { transform: rotate(360deg); } }
+
+    .radar-dot {
+      position: absolute;
+      width: 4px; height: 4px;
+      background: var(--cyan);
+      border-radius: 50%;
+      box-shadow: 0 0 6px var(--cyan);
+      animation: radarPulse 2s ease-in-out infinite;
+    }
+    .radar-dot:nth-child(5) { top: 20%; left: 65%; animation-delay: 0.3s; }
+    .radar-dot:nth-child(6) { top: 60%; left: 30%; animation-delay: 0.8s; }
+    .radar-dot:nth-child(7) { top: 40%; left: 75%; animation-delay: 1.4s; }
+    @keyframes radarPulse {
+      0%, 100% { opacity: 0; transform: scale(0.5); }
+      50% { opacity: 1; transform: scale(1.5); }
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-
-    .loading-text {
-      font-family: var(--mono);
-      font-size: 11px;
-      color: var(--text2);
-      letter-spacing: 0.15em;
+    .loading-title {
+      font-family: var(--serif);
+      font-size: 14px;
+      letter-spacing: 0.3em;
+      color: var(--cyan);
+      text-transform: uppercase;
+      margin-bottom: 24px;
     }
 
     .loading-steps {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      margin-top: 20px;
+      gap: 8px;
       align-items: center;
     }
 
@@ -363,100 +500,163 @@
       font-family: var(--mono);
       font-size: 10px;
       color: var(--text3);
+      letter-spacing: 0.1em;
       opacity: 0;
-      animation: stepIn 0.4s ease forwards;
+      animation: stepReveal 0.4s ease forwards;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
-    .loading-step:nth-child(1) { animation-delay: 0.3s; }
-    .loading-step:nth-child(2) { animation-delay: 0.9s; }
-    .loading-step:nth-child(3) { animation-delay: 1.5s; }
-    .loading-step:nth-child(4) { animation-delay: 2.1s; }
-    @keyframes stepIn { to { opacity: 0.7; } }
+    .loading-step::before { content: ''; width: 4px; height: 4px; background: var(--cyan); border-radius: 50%; flex-shrink: 0; }
+    .loading-step:nth-child(1) { animation-delay: 0.4s; }
+    .loading-step:nth-child(2) { animation-delay: 1.0s; }
+    .loading-step:nth-child(3) { animation-delay: 1.6s; }
+    .loading-step:nth-child(4) { animation-delay: 2.2s; }
+    @keyframes stepReveal { to { opacity: 0.6; } }
 
-    /* ── Results ─────────────────────────────────────────────────── */
-    #results { display: none; animation: fadeIn 0.5s ease; }
-    #results.visible { display: block; }
+    /* ── Results ── */
+    #results { display: none; }
+    #results.visible { display: block; animation: fadeUp 0.5s ease; }
 
-    /* ── Meta bar ─────────────────────────────────────────────────── */
+    /* ── Meta bar ── */
     .meta-bar {
       display: flex;
       flex-wrap: wrap;
-      gap: 24px;
-      padding: 16px 24px;
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      margin-bottom: 32px;
-      font-family: var(--mono);
-      font-size: 10px;
+      gap: 0;
+      border: 1px solid var(--border2);
+      margin-bottom: 36px;
+      overflow: hidden;
     }
 
-    .meta-item { display: flex; flex-direction: column; gap: 3px; }
-    .meta-key { color: var(--text3); letter-spacing: 0.1em; }
-    .meta-val { color: var(--text); }
-    .meta-val.good { color: var(--green); }
+    .meta-item {
+      flex: 1;
+      min-width: 120px;
+      padding: 12px 20px;
+      border-right: 1px solid var(--border2);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: var(--bg2);
+      transition: background 0.2s;
+    }
+    .meta-item:last-child { border-right: none; }
+    .meta-item:hover { background: var(--bg3); }
+
+    .meta-key {
+      font-family: var(--mono);
+      font-size: 8px;
+      color: var(--text3);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+    .meta-val {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text);
+      font-weight: 500;
+    }
+    .meta-val.good { color: var(--green); text-shadow: 0 0 8px var(--green); }
     .meta-val.warn { color: var(--gold); }
 
-    /* ── Country cards ────────────────────────────────────────────── */
-    .results-grid {
-      display: grid;
-      gap: 20px;
-    }
+    /* ── Country cards ── */
+    .results-grid { display: flex; flex-direction: column; gap: 24px; }
 
     .country-card {
       background: var(--bg2);
-      border: 1px solid var(--border);
+      border: 1px solid var(--border2);
       position: relative;
       overflow: hidden;
-      animation: fadeIn 0.5s ease both;
+      opacity: 0;
+      transform: translateY(30px);
+      transition: border-color 0.3s, box-shadow 0.3s;
     }
-    .country-card:nth-child(1) { animation-delay: 0.1s; }
-    .country-card:nth-child(2) { animation-delay: 0.2s; }
-    .country-card:nth-child(3) { animation-delay: 0.3s; }
-    .country-card:nth-child(n+4) { animation-delay: 0.4s; }
+    .country-card.revealed {
+      animation: cardReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes cardReveal {
+      to { opacity: 1; transform: translateY(0); }
+    }
 
-    .country-card.rank-1 { border-color: var(--gold); }
-    .country-card.rank-1::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
+    .country-card:hover {
+      border-color: var(--cyan);
+      box-shadow: 0 0 40px var(--cyan-dim), inset 0 0 40px #00000020;
+    }
+
+    .country-card.rank-1 {
+      border-color: var(--gold);
+      box-shadow: 0 0 30px #ffd70015;
+    }
+    .country-card.rank-1:hover { box-shadow: 0 0 60px #ffd70025; }
+
+    /* Top glow line */
+    .card-glow-line {
       height: 2px;
-      background: linear-gradient(90deg, var(--gold), var(--gold2), var(--gold));
+      width: 0;
+      transition: width 1s ease;
+    }
+    .country-card.revealed .card-glow-line { width: 100%; }
+    .rank-1 .card-glow-line { background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+    .rank-2 .card-glow-line { background: linear-gradient(90deg, transparent, var(--cyan), transparent); }
+    .rank-3 .card-glow-line { background: linear-gradient(90deg, transparent, #8888ff, transparent); }
+    .country-card:not(.rank-1):not(.rank-2):not(.rank-3) .card-glow-line {
+      background: linear-gradient(90deg, transparent, var(--text3), transparent);
+    }
+
+    /* Background rank number watermark */
+    .card-watermark {
+      position: absolute;
+      right: -10px;
+      bottom: -20px;
+      font-family: var(--serif);
+      font-size: 180px;
+      font-weight: 900;
+      color: var(--border);
+      line-height: 1;
+      pointer-events: none;
+      user-select: none;
     }
 
     /* Card header */
     .card-header {
       display: flex;
       align-items: center;
-      gap: 16px;
-      padding: 20px 24px 16px;
+      gap: 20px;
+      padding: 24px 28px 20px;
       border-bottom: 1px solid var(--border);
+      position: relative;
     }
 
     .rank-badge {
       font-family: var(--serif);
-      font-size: 28px;
-      font-weight: 700;
-      color: var(--text3);
-      min-width: 36px;
+      font-size: 32px;
+      font-weight: 900;
+      min-width: 44px;
       line-height: 1;
     }
-    .country-card.rank-1 .rank-badge { color: var(--gold); }
-    .country-card.rank-2 .rank-badge { color: var(--text2); }
+    .rank-1 .rank-badge { color: var(--gold); text-shadow: 0 0 20px var(--gold); }
+    .rank-2 .rank-badge { color: var(--cyan); text-shadow: 0 0 20px var(--cyan); }
+    .rank-3 .rank-badge { color: #8888ff; text-shadow: 0 0 20px #8888ff; }
+    .country-card:not(.rank-1):not(.rank-2):not(.rank-3) .rank-badge { color: var(--text3); }
 
     .flag-img {
-      width: 36px;
-      height: 24px;
+      width: 48px;
+      height: 32px;
       object-fit: cover;
-      border: 1px solid var(--border);
+      border: 1px solid var(--border2);
       flex-shrink: 0;
+      filter: brightness(0.9) saturate(0.8);
+      transition: filter 0.3s;
     }
+    .country-card:hover .flag-img { filter: brightness(1) saturate(1); }
 
     .card-title-block { flex: 1; }
 
     .card-country-name {
       font-family: var(--serif);
-      font-size: 20px;
-      font-weight: 700;
+      font-size: 22px;
+      font-weight: 600;
       color: #fff;
+      letter-spacing: 0.05em;
       line-height: 1.1;
     }
 
@@ -464,237 +664,246 @@
       font-family: var(--mono);
       font-size: 10px;
       color: var(--text2);
-      margin-top: 3px;
+      margin-top: 5px;
+      letter-spacing: 0.05em;
     }
 
-    .composite-score {
-      text-align: right;
-    }
-
-    .score-big {
-      font-family: var(--serif);
-      font-size: 36px;
-      font-weight: 900;
-      line-height: 1;
-    }
-
-    .score-label {
+    .rank-label-pill {
       font-family: var(--mono);
       font-size: 9px;
-      color: var(--text3);
-      letter-spacing: 0.1em;
-      text-align: right;
-      margin-top: 2px;
-    }
-
-    .rank-label-tag {
-      font-family: var(--mono);
-      font-size: 9px;
-      letter-spacing: 0.1em;
-      padding: 3px 8px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      padding: 4px 12px;
       border: 1px solid;
-      text-align: right;
       display: inline-block;
       margin-top: 6px;
     }
-    .country-card.rank-1 .rank-label-tag { color: var(--gold); border-color: var(--gold); }
-    .country-card.rank-2 .rank-label-tag { color: var(--text2); border-color: var(--border2); }
-    .country-card.rank-3 .rank-label-tag { color: var(--blue); border-color: var(--blue); }
-    .country-card:not(.rank-1):not(.rank-2):not(.rank-3) .rank-label-tag { color: var(--text3); border-color: var(--border); }
+    .rank-1 .rank-label-pill { color: var(--gold); border-color: var(--gold); background: var(--gold-dim); }
+    .rank-2 .rank-label-pill { color: var(--cyan); border-color: var(--cyan); background: var(--cyan-dim); }
+    .rank-3 .rank-label-pill { color: #8888ff; border-color: #8888ff; background: #8888ff15; }
+    .country-card:not(.rank-1):not(.rank-2):not(.rank-3) .rank-label-pill { color: var(--text3); border-color: var(--border2); background: transparent; }
 
-    /* Card body */
+    /* Big score */
+    .composite-score { text-align: right; }
+
+    .score-big {
+      font-family: var(--serif);
+      font-size: 52px;
+      font-weight: 900;
+      line-height: 1;
+      transition: text-shadow 0.3s;
+    }
+    .s-high { color: var(--green); }
+    .s-mid  { color: var(--gold); }
+    .s-low  { color: var(--red); }
+    .country-card:hover .score-big { text-shadow: 0 0 30px currentColor; }
+
+    .score-label {
+      font-family: var(--mono);
+      font-size: 8px;
+      color: var(--text3);
+      letter-spacing: 0.15em;
+      text-align: right;
+      margin-top: 3px;
+    }
+
+    /* ── Card body grid ── */
     .card-body {
-      padding: 20px 24px;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 20px;
+      gap: 0;
     }
 
-    @media (max-width: 700px) {
-      .card-body { grid-template-columns: 1fr; }
-      .form-row { grid-template-columns: 1fr; }
+    .card-col {
+      padding: 24px 28px;
     }
+    .card-col:first-child { border-right: 1px solid var(--border); }
 
-    /* Score breakdown */
-    .score-section h4 {
+    .col-title {
       font-family: var(--mono);
-      font-size: 9px;
-      letter-spacing: 0.2em;
+      font-size: 8px;
+      letter-spacing: 0.25em;
       text-transform: uppercase;
       color: var(--text3);
-      margin-bottom: 12px;
-    }
-
-    .score-bars { display: flex; flex-direction: column; gap: 10px; }
-
-    .score-bar-row {
+      margin-bottom: 16px;
       display: flex;
-      flex-direction: column;
-      gap: 5px;
+      align-items: center;
+      gap: 8px;
     }
+    .col-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* Score bars */
+    .score-bars { display: flex; flex-direction: column; gap: 14px; }
+
+    .score-bar-row { display: flex; flex-direction: column; gap: 6px; }
 
     .score-bar-top {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: baseline;
     }
 
     .score-bar-name {
-      font-family: var(--mono);
-      font-size: 10px;
+      font-family: var(--sans);
+      font-size: 12px;
+      font-weight: 500;
       color: var(--text2);
+      letter-spacing: 0.02em;
     }
 
-    .score-bar-val {
+    .score-bar-num {
       font-family: var(--mono);
-      font-size: 11px;
-      font-weight: 500;
+      font-size: 14px;
+      font-weight: bold;
     }
 
     .score-bar-track {
-      height: 4px;
+      height: 3px;
       background: var(--bg3);
       border: 1px solid var(--border);
       overflow: hidden;
+      position: relative;
     }
 
     .score-bar-fill {
       height: 100%;
       width: 0;
-      transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+    }
+    .score-bar-fill::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: -2px;
+      width: 4px; height: 7px;
+      background: inherit;
+      filter: brightness(2);
     }
 
-    /* Score color helpers */
-    .score-high  { color: var(--green); }
-    .score-mid   { color: var(--gold); }
-    .score-low   { color: var(--red); }
-    .fill-high   { background: var(--green); }
-    .fill-mid    { background: var(--gold); }
-    .fill-low    { background: var(--red); }
+    .fill-high { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .fill-mid  { background: var(--gold);  box-shadow: 0 0 8px var(--gold);  }
+    .fill-low  { background: var(--red);   box-shadow: 0 0 8px var(--red);   }
+    .s-high    { color: var(--green); text-shadow: 0 0 8px var(--green); }
+    .s-mid     { color: var(--gold);  text-shadow: 0 0 8px var(--gold);  }
+    .s-low     { color: var(--red);   text-shadow: 0 0 8px var(--red);   }
 
     /* Profile data */
-    .profile-section h4 {
-      font-family: var(--mono);
-      font-size: 9px;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: var(--text3);
-      margin-bottom: 12px;
-    }
-
     .profile-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px 16px;
+      gap: 12px 16px;
     }
 
-    .profile-item { display: flex; flex-direction: column; gap: 2px; }
+    .profile-item { display: flex; flex-direction: column; gap: 3px; }
+
     .profile-key {
       font-family: var(--mono);
-      font-size: 9px;
+      font-size: 8px;
       color: var(--text3);
-      letter-spacing: 0.1em;
+      letter-spacing: 0.15em;
       text-transform: uppercase;
     }
+
     .profile-val {
       font-family: var(--mono);
-      font-size: 11px;
+      font-size: 12px;
       color: var(--text);
     }
 
-    /* Raw data section */
+    /* ── Data chips row ── */
     .card-data {
-      padding: 0 24px 20px;
+      padding: 16px 28px;
+      border-top: 1px solid var(--border);
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 12px;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 10px;
     }
 
     .data-chip {
       background: var(--bg3);
       border: 1px solid var(--border);
       padding: 10px 12px;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+      overflow: hidden;
     }
+    .data-chip:hover { border-color: var(--border2); background: #0a1a2e; }
 
     .data-chip-key {
       font-family: var(--mono);
-      font-size: 9px;
+      font-size: 8px;
       color: var(--text3);
-      letter-spacing: 0.1em;
+      letter-spacing: 0.15em;
       text-transform: uppercase;
       margin-bottom: 4px;
     }
 
     .data-chip-val {
       font-family: var(--mono);
-      font-size: 12px;
+      font-size: 13px;
       color: var(--text);
       font-weight: 500;
     }
 
-    /* Reasoning section */
+    /* ── Reasoning ── */
     .card-reasoning {
-      padding: 16px 24px;
+      padding: 18px 28px;
       border-top: 1px solid var(--border);
-      background: #ffffff04;
+      background: #ffffff03;
     }
 
     .reasoning-title {
       font-family: var(--mono);
-      font-size: 9px;
-      letter-spacing: 0.2em;
+      font-size: 8px;
+      letter-spacing: 0.25em;
       text-transform: uppercase;
       color: var(--text3);
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
 
-    .reasoning-list {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
+    .reasoning-list { display: flex; flex-direction: column; gap: 8px; }
 
     .reasoning-item {
       display: flex;
-      gap: 10px;
+      gap: 12px;
       font-family: var(--sans);
-      font-size: 12px;
+      font-size: 13px;
+      font-weight: 400;
       color: var(--text2);
       line-height: 1.5;
+      padding-left: 4px;
+      border-left: 2px solid transparent;
+      transition: border-color 0.2s, color 0.2s;
     }
-
+    .reasoning-item:hover { border-left-color: var(--cyan); color: var(--text); }
     .reasoning-item::before {
       content: '›';
-      color: var(--gold);
-      font-size: 14px;
+      color: var(--cyan);
+      font-size: 16px;
       flex-shrink: 0;
-      line-height: 1.4;
+      line-height: 1.3;
     }
 
-    /* Cache indicator */
-    .cache-dot {
-      display: inline-block;
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      margin-right: 5px;
-      vertical-align: middle;
+    /* ── Availability badges ── */
+    .avail-row {
+      padding: 0 28px 16px;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
     }
-    .cache-dot.hit  { background: var(--green); }
-    .cache-dot.miss { background: var(--text3); }
 
-    /* Data availability warnings */
-    .missing-badge {
+    .avail-badge {
       font-family: var(--mono);
-      font-size: 9px;
-      color: var(--text3);
-      background: var(--bg3);
-      border: 1px dashed var(--border);
-      padding: 2px 6px;
-      letter-spacing: 0.05em;
+      font-size: 8px;
+      letter-spacing: 0.1em;
+      padding: 3px 8px;
+      border: 1px dashed var(--red);
+      color: var(--red);
+      opacity: 0.7;
     }
 
-    /* ── Footer ───────────────────────────────────────────────────── */
+    /* ── Footer ── */
     footer {
       margin-top: 60px;
       padding-top: 24px;
@@ -706,66 +915,69 @@
       gap: 12px;
     }
 
-    .footer-text {
-      font-family: var(--mono);
-      font-size: 10px;
-      color: var(--text3);
-    }
+    .footer-text { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.1em; }
 
-    .api-badges {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
+    .api-badges { display: flex; gap: 6px; flex-wrap: wrap; }
 
     .api-badge {
       font-family: var(--mono);
-      font-size: 9px;
+      font-size: 8px;
       color: var(--text3);
       border: 1px solid var(--border);
       padding: 3px 8px;
       letter-spacing: 0.05em;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .api-badge:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    /* ── Responsive ── */
+    @media (max-width: 680px) {
+      .card-body { grid-template-columns: 1fr; }
+      .card-col:first-child { border-right: none; border-bottom: 1px solid var(--border); }
+      .form-row { grid-template-columns: 1fr; }
+      .live-clock { display: none; }
     }
   </style>
 </head>
 <body>
 
+<!-- Custom cursor -->
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursor-ring"></div>
+
+<!-- Scan line -->
+<div class="scanline"></div>
+
+<!-- Particle canvas -->
+<canvas id="particle-canvas"></canvas>
+
 <div class="app">
-  <!-- ── Header ── -->
+
+  <!-- Header -->
   <header>
-    <div class="logo-block">
-      <span class="logo-eyebrow">Intelligence Engine v2.0</span>
-      <h1 class="logo-title">Geo<span>Intel</span></h1>
+    <div class="live-clock" id="live-clock">
+      <span class="clock-val" id="clock-time"></span><br>
+      UNIVERSAL COORDINATED TIME
     </div>
-    <div class="header-meta">
-      Global Relocation & Travel<br>Decision Intelligence Engine<br>
-      <span id="live-time"></span>
-    </div>
+    <div class="header-eyebrow">Global Intelligence System · v2.0</div>
+    <h1 class="header-title">Geo<span class="accent">Intel</span></h1>
+    <p class="header-subtitle">Relocation &amp; Travel Decision Intelligence Engine</p>
+    <div class="header-line"></div>
   </header>
 
-  <!-- ── Query Panel ── -->
+  <!-- Form Panel -->
   <div class="form-panel">
-    <div class="section-label">Configure Analysis</div>
+    <div class="section-label">Configure Intelligence Query</div>
 
-    <!-- Country tag input -->
-    <div class="country-input-area">
-      <div class="field-label">Target Countries (min. 3)</div>
-      <div class="tags-container" id="tags-container" onclick="document.getElementById('country-input').focus()">
-        <input
-          type="text"
-          id="country-input"
-          class="tag-input"
-          placeholder="Type a country name and press Enter..."
-          autocomplete="off"
-        />
-      </div>
-      <span class="input-hint">Press Enter or comma to add · Click × to remove</span>
+    <div class="field-label">Target Nations (Minimum 3)</div>
+    <div class="tags-container" id="tags-container" onclick="document.getElementById('country-input').focus()">
+      <input type="text" id="country-input" class="tag-input" placeholder="Enter country name and press Enter..." autocomplete="off" />
     </div>
+    <div class="input-hint">↵ Enter or comma to add · × to remove · Backspace to delete last</div>
 
-    <!-- Risk + Duration -->
     <div class="form-row">
       <div class="field-group">
-        <label class="field-label">Risk Tolerance</label>
+        <div class="field-label">Risk Tolerance</div>
         <div class="toggle-group" id="risk-group">
           <button class="toggle-btn active" data-val="low">Low</button>
           <button class="toggle-btn" data-val="moderate">Moderate</button>
@@ -773,75 +985,187 @@
         </div>
       </div>
       <div class="field-group">
-        <label class="field-label">Duration of Stay</label>
+        <div class="field-label">Duration of Stay</div>
         <div class="toggle-group" id="duration-group">
-          <button class="toggle-btn active" data-val="short">Short-term</button>
-          <button class="toggle-btn" data-val="long">Long-term</button>
+          <button class="toggle-btn active" data-val="short">Short-Term</button>
+          <button class="toggle-btn" data-val="long">Long-Term</button>
         </div>
       </div>
     </div>
 
     <button class="analyze-btn" id="analyze-btn" onclick="runAnalysis()">
-      ▸ Run Intelligence Analysis
+      ◈ &nbsp; Initiate Intelligence Analysis &nbsp; ◈
     </button>
-
     <div class="error-msg" id="error-msg"></div>
   </div>
 
-  <!-- ── Loading ── -->
+  <!-- Loading -->
   <div class="loading-panel" id="loading-panel">
-    <div class="loading-spinner"></div>
-    <div class="loading-text">PROCESSING INTELLIGENCE REQUEST</div>
+    <div class="radar-wrapper">
+      <div class="radar-circle"></div>
+      <div class="radar-circle"></div>
+      <div class="radar-circle"></div>
+      <div class="radar-circle"></div>
+      <div class="radar-sweep"></div>
+      <div class="radar-dot"></div>
+      <div class="radar-dot"></div>
+      <div class="radar-dot"></div>
+    </div>
+    <div class="loading-title">Acquiring Intelligence</div>
     <div class="loading-steps">
-      <div class="loading-step">▸ Fetching country profiles from REST Countries...</div>
-      <div class="loading-step">▸ Querying World Bank health indicators...</div>
-      <div class="loading-step">▸ Retrieving live weather & AQI data...</div>
-      <div class="loading-step">▸ Computing intelligence scores and ranking...</div>
+      <div class="loading-step">Fetching country profiles from REST Countries API</div>
+      <div class="loading-step">Querying World Bank health & stability indicators</div>
+      <div class="loading-step">Retrieving live weather data via OpenWeatherMap</div>
+      <div class="loading-step">Computing intelligence scores and ranking nations</div>
     </div>
   </div>
 
-  <!-- ── Results ── -->
+  <!-- Results -->
   <div id="results">
-    <div class="section-label">Analysis Results</div>
-
-    <!-- Meta bar -->
+    <div class="section-label">Intelligence Report</div>
     <div class="meta-bar" id="meta-bar"></div>
-
-    <!-- Country cards -->
     <div class="results-grid" id="results-grid"></div>
   </div>
 
-  <!-- ── Footer ── -->
+  <!-- Footer -->
   <footer>
-    <span class="footer-text">GeoIntel Decision Engine · Real-time public data</span>
+    <span class="footer-text">GeoIntel v2.0 · Real-time public data aggregation</span>
     <div class="api-badges">
       <span class="api-badge">REST Countries</span>
       <span class="api-badge">World Bank</span>
       <span class="api-badge">OpenWeatherMap</span>
       <span class="api-badge">WAQI</span>
-      <span class="api-badge">Travel Advisory</span>
+      <span class="api-badge">WB Stability</span>
     </div>
   </footer>
+
 </div>
 
 <script>
 // ── Config ────────────────────────────────────────────────────────────────────
-const API_URL = 'https://global-relocation-travel-decision.onrender.com/api/analyze';
+const API_URL ='https://global-relocation-travel-decision.onrender.com/api/analyze';
 
-// ── State ─────────────────────────────────────────────────────────────────────
-let countries = [];
-let isSubmitting = false;
+// ── Cursor ────────────────────────────────────────────────────────────────────
+const cursor = document.getElementById('cursor');
+const cursorRing = document.getElementById('cursor-ring');
+let mx = 0, my = 0, rx = 0, ry = 0;
 
-// ── Live clock ────────────────────────────────────────────────────────────────
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  cursor.style.left = mx - 4 + 'px';
+  cursor.style.top  = my - 4 + 'px';
+});
+
+function animateCursorRing() {
+  rx += (mx - rx - 16) * 0.12;
+  ry += (my - ry - 16) * 0.12;
+  cursorRing.style.left = rx + 'px';
+  cursorRing.style.top  = ry + 'px';
+  requestAnimationFrame(animateCursorRing);
+}
+animateCursorRing();
+
+document.querySelectorAll('button, input, .country-tag').forEach(el => {
+  el.addEventListener('mouseenter', () => {
+    cursor.style.transform = 'scale(2)';
+    cursorRing.style.transform = 'scale(1.5)';
+    cursorRing.style.borderColor = 'var(--cyan2)';
+  });
+  el.addEventListener('mouseleave', () => {
+    cursor.style.transform = 'scale(1)';
+    cursorRing.style.transform = 'scale(1)';
+    cursorRing.style.borderColor = 'var(--cyan)';
+  });
+});
+
+// ── Particles ─────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('particle-canvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+let W, H;
+
+function resizeCanvas() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function initParticles() {
+  particles = [];
+  const count = Math.floor((W * H) / 12000);
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: Math.random() * 1.2 + 0.2,
+      vx: (Math.random() - 0.5) * 0.15,
+      vy: (Math.random() - 0.5) * 0.15,
+      alpha: Math.random() * 0.5 + 0.1,
+      twinkle: Math.random() * Math.PI * 2,
+    });
+  }
+}
+initParticles();
+
+// Connection lines between nearby particles
+function drawConnections() {
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 120) {
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.strokeStyle = `rgba(0, 212, 255, ${(1 - dist / 120) * 0.08})`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+function animateParticles() {
+  ctx.clearRect(0, 0, W, H);
+  drawConnections();
+
+  particles.forEach(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.twinkle += 0.02;
+
+    if (p.x < 0) p.x = W;
+    if (p.x > W) p.x = 0;
+    if (p.y < 0) p.y = H;
+    if (p.y > H) p.y = 0;
+
+    const alpha = p.alpha * (0.7 + 0.3 * Math.sin(p.twinkle));
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(0, 212, 255, ${alpha})`;
+    ctx.fill();
+  });
+
+  requestAnimationFrame(animateParticles);
+}
+animateParticles();
+
+// ── Clock ─────────────────────────────────────────────────────────────────────
 function updateClock() {
-  const el = document.getElementById('live-time');
-  if (el) el.textContent = new Date().toUTCString().replace(' GMT', ' UTC');
+  const el = document.getElementById('clock-time');
+  if (el) {
+    const now = new Date();
+    el.textContent = now.toUTCString().replace(' GMT', '');
+  }
 }
 setInterval(updateClock, 1000);
 updateClock();
 
-// ── Country tag input ─────────────────────────────────────────────────────────
-const tagInput   = document.getElementById('country-input');
+// ── Tag input ─────────────────────────────────────────────────────────────────
+let countries = [];
+const tagInput = document.getElementById('country-input');
 const tagContainer = document.getElementById('tags-container');
 
 function addCountry(name) {
@@ -859,13 +1183,11 @@ function removeCountry(name) {
 }
 
 function renderTags() {
-  // Remove all existing tags (not the input)
   Array.from(tagContainer.querySelectorAll('.country-tag')).forEach(el => el.remove());
-
   countries.forEach(name => {
     const tag = document.createElement('div');
     tag.className = 'country-tag';
-    tag.innerHTML = `${name}<button class="tag-remove" onclick="removeCountry('${name}')" title="Remove">×</button>`;
+    tag.innerHTML = `${name.toUpperCase()}<button class="tag-remove" onclick="removeCountry('${name}')" title="Remove">×</button>`;
     tagContainer.insertBefore(tag, tagInput);
   });
 }
@@ -879,12 +1201,9 @@ tagInput.addEventListener('keydown', e => {
     renderTags();
   }
 });
+tagInput.addEventListener('blur', () => { if (tagInput.value.trim()) addCountry(tagInput.value); });
 
-tagInput.addEventListener('blur', () => {
-  if (tagInput.value.trim()) addCountry(tagInput.value);
-});
-
-// ── Toggle buttons ────────────────────────────────────────────────────────────
+// ── Toggles ───────────────────────────────────────────────────────────────────
 document.querySelectorAll('.toggle-group').forEach(group => {
   group.querySelectorAll('.toggle-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -893,37 +1212,43 @@ document.querySelectorAll('.toggle-group').forEach(group => {
     });
   });
 });
-
-function getToggleVal(groupId) {
-  return document.querySelector(`#${groupId} .toggle-btn.active`)?.dataset.val;
+function getToggleVal(id) {
+  return document.querySelector(`#${id} .toggle-btn.active`)?.dataset.val;
 }
 
-// ── Score helpers ─────────────────────────────────────────────────────────────
-function scoreClass(v)    { return v >= 65 ? 'score-high' : v >= 40 ? 'score-mid' : 'score-low'; }
-function fillClass(v)     { return v >= 65 ? 'fill-high'  : v >= 40 ? 'fill-mid'  : 'fill-low';  }
-function scoreColor(v)    { return v >= 65 ? '#4caf7d' : v >= 40 ? '#c9a84c' : '#e05252'; }
-function fmtScore(v)      { return v !== null && v !== undefined ? Math.round(v) : '—'; }
-function fmtVal(v, unit)  { return (v !== null && v !== undefined) ? `${typeof v === 'number' ? v.toFixed(1) : v}${unit || ''}` : 'N/A'; }
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function scoreClass(v)   { return v >= 65 ? 's-high' : v >= 40 ? 's-mid' : 's-low'; }
+function fillClass(v)    { return v >= 65 ? 'fill-high' : v >= 40 ? 'fill-mid' : 'fill-low'; }
+function fmtScore(v)     { return v !== null && v !== undefined ? Math.round(v) : '—'; }
+function fmtVal(v, unit) { return (v !== null && v !== undefined) ? `${typeof v === 'number' ? v.toFixed(1) : v}${unit || ''}` : 'N/A'; }
 
-// ── Main analysis ─────────────────────────────────────────────────────────────
+// Animated counter
+function animateCounter(el, target, duration = 1200) {
+  const start = performance.now();
+  const from = 0;
+  function step(now) {
+    const t = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - t, 4);
+    el.textContent = Math.round(from + (target - from) * eased);
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ── Analysis ──────────────────────────────────────────────────────────────────
+let isSubmitting = false;
+
 async function runAnalysis() {
   if (isSubmitting) return;
-
-  const errorEl   = document.getElementById('error-msg');
+  const errorEl = document.getElementById('error-msg');
   errorEl.className = 'error-msg';
-
-  // Collect any pending input
   if (tagInput.value.trim()) addCountry(tagInput.value);
 
   const riskTolerance = getToggleVal('risk-group');
   const duration      = getToggleVal('duration-group');
 
-  if (countries.length < 3) {
-    showError('Please add at least 3 countries to analyze.');
-    return;
-  }
+  if (countries.length < 3) { showError('Please add at least 3 countries to analyze.'); return; }
 
-  // Set loading state
   isSubmitting = true;
   document.getElementById('analyze-btn').disabled = true;
   document.getElementById('results').className = '';
@@ -935,13 +1260,8 @@ async function runAnalysis() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ countries, riskTolerance, duration }),
     });
-
     const data = await res.json();
-
-    if (!res.ok || !data.success) {
-      throw new Error(data.errors?.join(' ') || data.message || 'Analysis failed.');
-    }
-
+    if (!res.ok || !data.success) throw new Error(data.errors?.join(' ') || data.message || 'Analysis failed.');
     renderResults(data);
   } catch (err) {
     document.getElementById('loading-panel').className = 'loading-panel';
@@ -959,33 +1279,35 @@ function showError(msg) {
   el.className = 'error-msg visible';
 }
 
-// ── Render results ────────────────────────────────────────────────────────────
+// ── Render ────────────────────────────────────────────────────────────────────
 function renderResults(data) {
   const { ranked_results, meta, weight_profile, failed_countries } = data;
 
   // Meta bar
-  const cacheHits = meta.cache.hits.length;
-  const cacheMisses = meta.cache.misses.length;
   document.getElementById('meta-bar').innerHTML = `
     <div class="meta-item">
-      <span class="meta-key">RESPONSE TIME</span>
+      <span class="meta-key">Response Time</span>
       <span class="meta-val ${meta.performance.response_time_ms < 2000 ? 'good' : 'warn'}">${meta.performance.response_time_ms}ms</span>
     </div>
     <div class="meta-item">
-      <span class="meta-key">COUNTRIES ANALYZED</span>
+      <span class="meta-key">Nations Analyzed</span>
       <span class="meta-val">${meta.performance.countries_analyzed}</span>
     </div>
     <div class="meta-item">
-      <span class="meta-key">CACHE</span>
-      <span class="meta-val"><span class="cache-dot hit"></span>${cacheHits} hit · <span class="cache-dot miss"></span>${cacheMisses} miss</span>
+      <span class="meta-key">Cache Hits</span>
+      <span class="meta-val good">${meta.cache.hits.length}</span>
     </div>
     <div class="meta-item">
-      <span class="meta-key">RISK PROFILE</span>
+      <span class="meta-key">Cache Misses</span>
+      <span class="meta-val">${meta.cache.misses.length}</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-key">Risk Profile</span>
       <span class="meta-val">${meta.query.riskTolerance.toUpperCase()} / ${meta.query.duration.toUpperCase()}</span>
     </div>
     <div class="meta-item">
-      <span class="meta-key">GENERATED AT</span>
-      <span class="meta-val">${new Date(meta.generated_at).toUTCString().replace(' GMT', ' UTC')}</span>
+      <span class="meta-key">Timestamp</span>
+      <span class="meta-val">${new Date(meta.generated_at).toUTCString().slice(0,25)}</span>
     </div>
   `;
 
@@ -993,50 +1315,49 @@ function renderResults(data) {
   const grid = document.getElementById('results-grid');
   grid.innerHTML = '';
 
-  ranked_results.forEach(entry => {
+  ranked_results.forEach((entry, idx) => {
     const { rank, rank_label, country, profile, raw_data, scores, cache_hit, data_availability } = entry;
-    const s = scores;
-    const tr = s.travel_risk_score;
-    const hi = s.health_infrastructure_score;
-    const es = s.environmental_stability_score;
-    const comp = s.composite_score;
+    const tr = scores.travel_risk_score;
+    const hi = scores.health_infrastructure_score;
+    const es = scores.environmental_stability_score;
+    const comp = scores.composite_score;
+    const missing = Object.entries(data_availability || {}).filter(([, v]) => !v).map(([k]) => k);
 
     const card = document.createElement('div');
     card.className = `country-card rank-${rank}`;
 
-    const missingAPIs = Object.entries(data_availability || {}).filter(([, v]) => !v).map(([k]) => k);
-
     card.innerHTML = `
-      <!-- Header -->
+      <div class="card-glow-line"></div>
+      <div class="card-watermark">${rank}</div>
+
       <div class="card-header">
-        <div class="rank-badge">${rank}</div>
-        ${profile.flag_url ? `<img class="flag-img" src="${profile.flag_url}" alt="${country} flag" />` : ''}
+        <div class="rank-badge">${String(rank).padStart(2, '0')}</div>
+        ${profile.flag_url ? `<img class="flag-img" src="${profile.flag_url}" alt="${country}" />` : ''}
         <div class="card-title-block">
           <div class="card-country-name">${country}</div>
           <div class="card-subtitle">
-            ${profile.capital || 'N/A'} · ${profile.region || ''} · ${profile.currencies || 'N/A'}
-            ${cache_hit ? ' · <span class="cache-dot hit" style="display:inline-block"></span>cached' : ''}
+            ${profile.capital || 'N/A'} &nbsp;·&nbsp; ${profile.region || ''} &nbsp;·&nbsp; ${profile.currencies || 'N/A'}
+            ${cache_hit ? ' &nbsp;·&nbsp; ⚡ cached' : ''}
           </div>
+          <span class="rank-label-pill">${rank_label}</span>
         </div>
         <div class="composite-score">
-          <div class="score-big ${scoreClass(comp)}">${fmtScore(comp)}</div>
-          <div class="score-label">COMPOSITE SCORE</div>
-          <span class="rank-label-tag">${rank_label}</span>
+          <div class="score-big ${scoreClass(comp)}" data-target="${comp}">0</div>
+          <div class="score-label">Composite Score / 100</div>
         </div>
       </div>
 
-      <!-- Body: scores + profile -->
       <div class="card-body">
-        <div class="score-section">
-          <h4>Intelligence Scores</h4>
+        <div class="card-col">
+          <div class="col-title">Intelligence Scores</div>
           <div class="score-bars">
-            ${renderScoreBar('Travel Risk', tr?.score, weight_profile.travel_risk_score)}
-            ${renderScoreBar('Health Infrastructure', hi?.score, weight_profile.health_infrastructure_score)}
-            ${renderScoreBar('Environmental Stability', es?.score, weight_profile.environmental_stability_score)}
+            ${renderBar('Travel Risk', tr?.score, weight_profile.travel_risk_score)}
+            ${renderBar('Health Infrastructure', hi?.score, weight_profile.health_infrastructure_score)}
+            ${renderBar('Environmental Stability', es?.score, weight_profile.environmental_stability_score)}
           </div>
         </div>
-        <div class="profile-section">
-          <h4>Country Profile</h4>
+        <div class="card-col">
+          <div class="col-title">Nation Profile</div>
           <div class="profile-grid">
             <div class="profile-item">
               <span class="profile-key">Population</span>
@@ -1047,30 +1368,41 @@ function renderResults(data) {
               <span class="profile-val">${fmtVal(raw_data.life_expectancy_years, ' yrs')}</span>
             </div>
             <div class="profile-item">
-              <span class="profile-key">Health Expend.</span>
+              <span class="profile-key">Health Spend</span>
               <span class="profile-val">${fmtVal(raw_data.healthcare_expenditure_gdp_pct, '% GDP')}</span>
             </div>
             <div class="profile-item">
-              <span class="profile-key">Advisory Score</span>
-              <span class="profile-val">${raw_data.travel_advisory?.score?.toFixed(1) || 'N/A'}/5.0</span>
+              <span class="profile-key">Stability Score</span>
+              <span class="profile-val">${raw_data.travel_advisory?.score?.toFixed(1) || 'N/A'} / 5.0</span>
+            </div>
+            <div class="profile-item">
+              <span class="profile-key">Region</span>
+              <span class="profile-val">${profile.region || 'N/A'}</span>
+            </div>
+            <div class="profile-item">
+              <span class="profile-key">Subregion</span>
+              <span class="profile-val">${profile.subregion || 'N/A'}</span>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Raw data chips -->
       <div class="card-data">
         <div class="data-chip">
           <div class="data-chip-key">Temperature</div>
           <div class="data-chip-val">${raw_data.weather ? raw_data.weather.temp_celsius?.toFixed(1) + '°C' : 'N/A'}</div>
         </div>
         <div class="data-chip">
+          <div class="data-chip-key">Feels Like</div>
+          <div class="data-chip-val">${raw_data.weather ? raw_data.weather.feels_like?.toFixed(1) + '°C' : 'N/A'}</div>
+        </div>
+        <div class="data-chip">
           <div class="data-chip-key">Humidity</div>
           <div class="data-chip-val">${raw_data.weather ? raw_data.weather.humidity_pct + '%' : 'N/A'}</div>
         </div>
         <div class="data-chip">
-          <div class="data-chip-key">Weather</div>
-          <div class="data-chip-val">${raw_data.weather?.description || 'N/A'}</div>
+          <div class="data-chip-key">Conditions</div>
+          <div class="data-chip-val" style="font-size:11px;text-transform:capitalize">${raw_data.weather?.description || 'N/A'}</div>
         </div>
         <div class="data-chip">
           <div class="data-chip-key">AQI</div>
@@ -1081,56 +1413,61 @@ function renderResults(data) {
           <div class="data-chip-val">${raw_data.aqi?.dominant_pollutant?.toUpperCase() || 'N/A'}</div>
         </div>
         <div class="data-chip">
-          <div class="data-chip-key">Wind Speed</div>
+          <div class="data-chip-key">Wind</div>
           <div class="data-chip-val">${raw_data.weather ? raw_data.weather.wind_speed_ms + ' m/s' : 'N/A'}</div>
         </div>
       </div>
 
-      ${missingAPIs.length > 0 ? `
-      <div style="padding: 0 24px 12px; display:flex; gap:6px; flex-wrap:wrap;">
-        <span class="missing-badge">partial data:</span>
-        ${missingAPIs.map(k => `<span class="missing-badge">${k} unavailable</span>`).join('')}
-      </div>` : ''}
+      ${missing.length > 0 ? `<div class="avail-row">${missing.map(k => `<span class="avail-badge">${k} unavailable</span>`).join('')}</div>` : ''}
 
-      <!-- Reasoning -->
       <div class="card-reasoning">
         <div class="reasoning-title">Analysis Reasoning</div>
         <div class="reasoning-list">
-          ${(s.reasoning || []).map(r => `<div class="reasoning-item">${r}</div>`).join('')}
+          ${(scores.reasoning || []).map(r => `<div class="reasoning-item">${r}</div>`).join('')}
         </div>
       </div>
     `;
 
     grid.appendChild(card);
+
+    // Staggered reveal
+    setTimeout(() => {
+      card.classList.add('revealed');
+
+      // Animate composite score counter
+      const scoreEl = card.querySelector('.score-big');
+      if (scoreEl) animateCounter(scoreEl, parseInt(scoreEl.dataset.target), 1000 + idx * 150);
+
+      // Animate bars after card reveals
+      setTimeout(() => {
+        card.querySelectorAll('.score-bar-fill').forEach(bar => {
+          bar.style.width = bar.dataset.width + '%';
+        });
+      }, 300);
+
+    }, idx * 180);
   });
 
-  // Animate score bars after render
-  setTimeout(() => {
-    document.querySelectorAll('.score-bar-fill').forEach(bar => {
-      bar.style.width = bar.dataset.width + '%';
-    });
-  }, 50);
-
-  // Show failed countries if any
+  // Failed
   if (failed_countries?.length > 0) {
     const failedDiv = document.createElement('div');
-    failedDiv.style.cssText = 'margin-top:16px; padding:16px; background:#e0525210; border:1px solid #e0525240; font-family:var(--mono); font-size:11px; color:#e05252;';
-    failedDiv.innerHTML = '<strong>Could not analyze:</strong> ' + failed_countries.map(f => `${f.country} (${f.reason})`).join(' · ');
+    failedDiv.style.cssText = 'padding:16px 24px; background:#ff475710; border:1px solid #ff4757; font-family:var(--mono); font-size:11px; color:var(--red); margin-top:12px;';
+    failedDiv.innerHTML = '⚠ Could not analyze: ' + failed_countries.map(f => `${f.country} (${f.reason})`).join(' · ');
     grid.appendChild(failedDiv);
   }
 
   document.getElementById('results').className = 'visible';
-  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
 }
 
-function renderScoreBar(label, value, weight) {
+function renderBar(label, value, weight) {
   const v = value ?? 50;
   const pct = Math.round(weight * 100);
   return `
     <div class="score-bar-row">
       <div class="score-bar-top">
-        <span class="score-bar-name">${label} <span style="color:var(--text3);font-size:9px;">(${pct}%)</span></span>
-        <span class="score-bar-val ${scoreClass(v)}">${fmtScore(v)}</span>
+        <span class="score-bar-name">${label} <span style="color:var(--text3);font-size:10px;font-family:var(--mono)">(${pct}%)</span></span>
+        <span class="score-bar-num ${scoreClass(v)}">${fmtScore(v)}</span>
       </div>
       <div class="score-bar-track">
         <div class="score-bar-fill ${fillClass(v)}" data-width="${v}" style="width:0%"></div>
