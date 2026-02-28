@@ -54,14 +54,13 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ success: false, message: "Internal server error." });
 });
 
-// ─── Start (Only for Local Development) ─────────────────────────────
-if (process.env.NODE_ENV !== "production") {
-  const PORT = process.env.PORT || 3001;
-  app.listen(PORT, () => {
-    logger.info("SERVER", `🌍 Decision Engine running on port ${PORT}`);
-    logger.info("SERVER", `Endpoint: POST http://localhost:${PORT}/api/analyze`);
-  });
-}
+// ─── Start Server ─────────────────────────────────────────────
+const PORT = process.env.PORT || 3001;
+
+app.listen(PORT, () => {
+  logger.info("SERVER", `🌍 Decision Engine running on port ${PORT}`);
+  logger.info("SERVER", `Environment: ${process.env.NODE_ENV || "development"}`);
+});
 
 // Export for Vercel
 module.exports = app;
