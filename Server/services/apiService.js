@@ -140,26 +140,16 @@ async function fetchAQI(capital, countryName) {
 async function fetchTravelAdvisory(iso2, countryName) {
   if (!iso2) return null;
   return timedCall("TRAVEL_ADVISORY", countryName, async () => {
-    // World Bank Political Stability & No Violence indicator (PV.EST)
-    // Range: -2.5 (unstable) to +2.5 (stable)
-    const url = `https://api.worldbank.org/v2/country/${iso2}/indicator/PV.EST?format=json&mrv=1&per_page=1`;
-    const res = await http.get(url);
-    const value = res.data?.[1]?.[0]?.value ?? null;
-
-    if (value === null) throw new Error("No stability data");
-
-    // Convert -2.5 to +2.5 scale → 1.0 to 5.0 scale (to match old format)
-    // -2.5 = most dangerous = score 5.0
-    // +2.5 = most stable   = score 1.0
-    const score = parseFloat((((value - 2.5) / -5) * 4 + 1).toFixed(2));
-
+    const https = require('https');
+    const res = await http.get(`https://www.travel-advisory.info/api?countrycode=${iso2}`, {
+      httpsAgent: new https.Agent({ rejectUnauthorized: false })
+    });
+    const entry = res.data?.data?.[iso2];
+    if (!entry) throw new Error("No advisory data");
     return {
-      score: Math.max(1, Math.min(5, score)),
-      message: value >= 1 ? "Stable political environment" :
-               value >= 0 ? "Generally stable with some risks" :
-               value >= -1 ? "Moderate instability risks" :
-               "Elevated political instability",
-      sources_active: 1,
+      score:          entry.advisory?.score ?? null,
+      message:        entry.advisory?.message || "No message available",
+      sources_active: entry.advisory?.sources_active ?? 0,
     };
   });
 }
